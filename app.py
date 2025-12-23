@@ -153,6 +153,10 @@ def unread_count():
     count = Message.query.filter_by(recipient_handle=user.handle, is_read=False).count()
     return {'count': count}
 
+@app.route('/health')
+def health():
+    return {'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()}, 200
+
 @app.route('/message/<int:message_id>')
 def view_message(message_id):
     if 'user_id' not in session:
