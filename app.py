@@ -24,7 +24,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     handle = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Message(db.Model):
@@ -33,6 +33,11 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     is_read = db.Column(db.Boolean, default=False)
+
+class PushSubscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subscription_json = db.Column(db.Text, nullable=False)
 
 
 
@@ -46,15 +51,20 @@ def login():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         
-        user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password_hash, password):
-            session['user_id'] = user.id
-            session['handle'] = user.handle
-            session.permanent = True
-            flash('Logged in successfully! Welcome back.', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            return render_template('login.html', error='Invalid email or password.')
+        try:
+            user = User.query.filter_by(email=email).first()
+            if user and check_password_hash(user.password_hash, password):
+                session['user_id'] = user.id
+                session['handle'] = user.handle
+                session.permanent = True
+                flash('Logged in successfully! Welcome back.', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                return render_template('login.html', error='Invalid email or password.')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Login error: {e}')
+            return render_template('login.html', error='Login failed. Please try again.')
     
     return render_template('login.html')
 
@@ -67,23 +77,32 @@ def register():
         
         if not handle or not email or not password:
             return render_template('register.html', error='Please fill all fields.')
-        
-        if User.query.filter_by(handle=handle).first():
-            return render_template('register.html', error='Handle already taken.')
-        
-        if User.query.filter_by(email=email).first():
-            return render_template('register.html', error='Email already registered.')
-        
-        hashed_password = generate_password_hash(password)
-        user = User(handle=handle, email=email, password_hash=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        
-        session['user_id'] = user.id
-        session['handle'] = user.handle
-        session.permanent = True
-        flash('Account created successfully! Welcome to Ghost NGL.', 'success')
-        return redirect(url_for('dashboard'))
+
+        # Validate email format
+        if not email.endswith('@ghostngl.com') or '@' in email[:-13]:
+            return render_template('register.html', error='Invalid email format.')
+
+        try:
+            if User.query.filter_by(handle=handle).first():
+                return render_template('register.html', error='Handle already taken.')
+
+            if User.query.filter_by(email=email).first():
+                return render_template('register.html', error='Email already registered.')
+
+            hashed_password = generate_password_hash(password)
+            user = User(handle=handle, email=email, password_hash=hashed_password)
+            db.session.add(user)
+            db.session.commit()
+
+            session['user_id'] = user.id
+            session['handle'] = user.handle
+            session.permanent = True
+            flash('Account created successfully! Welcome to Ghost NGL.', 'success')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Registration error: {e}')
+            return render_template('register.html', error='Registration failed. Please try again.')
     
     return render_template('register.html')
 
@@ -147,11 +166,15 @@ def logout():
 
 @app.route('/api/unread-count')
 def unread_count():
-    if 'user_id' not in session:
-        return {'count': 0}, 401
-    user = User.query.get(session['user_id'])
-    count = Message.query.filter_by(recipient_handle=user.handle, is_read=False).count()
-    return {'count': count}
+    try:
+        if 'user_id' not in session:
+            return {'count': 0}, 401
+        user = User.query.get(session['user_id'])
+        count = Message.query.filter_by(recipient_handle=user.handle, is_read=False).count()
+        return {'count': count}
+    except Exception as e:
+        app.logger.error(f'Unread count error: {e}')
+        return {'count': 0}, 500
 
 @app.route('/health')
 def health():
@@ -167,9 +190,13 @@ def view_message(message_id):
     if not message:
         return redirect(url_for('dashboard'))
     
-    # Mark as read
-    message.is_read = True
-    db.session.commit()
+    try:
+        # Mark as read
+        message.is_read = True
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f'Mark read error: {e}')
+        # Continue anyway
     
     return render_template('view_message.html', message=message, handle=user.handle)
 
@@ -185,11 +212,16 @@ def send_page(username):
         if not content:
             return render_template('send_page.html', error='Please enter a message.', username=username)
         
-        # Save message without any sender data
-        message = Message(recipient_handle=username, content=content)
-        db.session.add(message)
-        db.session.commit()
-        return redirect(url_for('message_sent'))
+        try:
+            # Save message without any sender data
+            message = Message(recipient_handle=username, content=content)
+            db.session.add(message)
+            db.session.commit()
+            return redirect(url_for('message_sent'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f'Message send error: {e}')
+            return render_template('send_page.html', error='Failed to send message. Please try again.', username=username)
     
     return render_template('send_page.html', username=username)
 
