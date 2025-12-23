@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/icon.png">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#000000">
+    <meta property="og:title" content="Login to Ghost NGL">
+    <meta property="og:description" content="Access your anonymous messaging inbox.">
+    <meta property="og:image" content="/static/icon.png">
+    <meta property="og:url" content="{{ url_for('login', _external=True) }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Login - Ghost NGL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 min-h-screen flex flex-col">
+    <div class="bg-yellow-400 text-black text-center py-2 text-sm font-medium">
+        🚀 BETA VERSION - Ghost NGL is in development
+    </div>
+    <div class="flex-grow flex items-center justify-center">
+        <div class="max-w-sm sm:max-w-md lg:max-w-lg w-full mx-4">
+        <div class="bg-white/90 backdrop-blur-sm border-2 border-white/20 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)] p-8 rounded-lg animate-fade-in">
+            <h1 class="text-3xl font-bold text-center mb-6">Login to Ghost NGL</h1>
+            {% if error %}
+            <p class="text-red-500 text-center mb-4 animate-fade-in">{{ error }}</p>
+            {% endif %}
+            <form method="post" class="space-y-4">
+                <div class="relative">
+                    <input type="email" name="email" placeholder="Email" class="w-full p-2 sm:p-3 lg:p-4 border-2 border-gray-300 rounded-lg text-sm sm:text-base lg:text-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all duration-300" required>
+                    <svg class="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                    </svg>
+                </div>
+                <div class="relative">
+                    <input type="password" name="password" id="password" placeholder="Password" class="w-full p-2 sm:p-3 lg:p-4 border-2 border-gray-300 rounded-lg text-sm sm:text-base lg:text-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all duration-300" required>
+                    <button type="button" onclick="togglePassword()" class="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-gray-600" aria-label="Toggle password visibility">
+                        <svg id="eyeIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button type="submit" onclick="showLoading(this)" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 sm:py-3 lg:py-4 font-bold text-sm sm:text-base lg:text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
+                    <span id="loginText">Login</span>
+                    <svg class="w-5 h-5 hidden" id="loginSpinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </form>
+            <p class="text-center mt-4 text-gray-600">Don't have an account? <a href="{{ url_for('register') }}" class="text-purple-600 hover:underline">Sign up for Ghost NGL</a></p>
+        </div>
+    </div>
+    </div>
+    <footer class="fixed bottom-0 left-0 right-0 text-center text-gray-400 text-sm py-4 font-bold bg-black/50 backdrop-blur-sm">
+        <span class="text-lg font-extrabold tracking-wider">COPYRIGHT</span> © <span id="year"></span> Ghost NGL. Designed by inda aka ghostscript
+    </footer>
+    <script>
+        function showLoading(button) {
+            const text = button.querySelector('span');
+            const spinner = button.querySelector('svg');
+            text.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            // button.disabled = true; // Temporarily remove to allow submit
+        }
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>';
+            }
+        }
+        document.getElementById('year').textContent = new Date().getFullYear();
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
+        }
+    </script>
+</body>
+</html>

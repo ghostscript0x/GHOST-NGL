@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/icon.png">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#000000">
+    <meta property="og:title" content="Ghost NGL - Anonymous Messaging">
+    <meta property="og:description" content="Send and receive anonymous messages from the shadows with Ghost NGL.">
+    <meta property="og:image" content="/static/icon.png">
+    <meta property="og:url" content="{{ url_for('landing', _external=True) }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Ghost NGL - Anonymous Messaging</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .gradient-text { background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .floating { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        .particle { position: absolute; background: rgba(255,255,255,0.1); border-radius: 50%; animation: drift 10s linear infinite; }
+        @keyframes drift { from { transform: translateY(100vh) rotate(0deg); } to { transform: translateY(-100px) rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 min-h-screen flex flex-col relative overflow-hidden">
+    <div class="particle" style="left: 10%; width: 4px; height: 4px; animation-delay: 0s;"></div>
+    <div class="particle" style="left: 20%; width: 6px; height: 6px; animation-delay: 2s;"></div>
+    <div class="particle" style="left: 30%; width: 3px; height: 3px; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 50%; width: 5px; height: 5px; animation-delay: 6s;"></div>
+    <div class="particle" style="left: 70%; width: 4px; height: 4px; animation-delay: 8s;"></div>
+    <div class="particle" style="left: 80%; width: 7px; height: 7px; animation-delay: 10s;"></div>
+    <div class="bg-yellow-400 text-black text-center py-2 text-sm font-medium">
+        🚀 BETA VERSION - Ghost NGL is in development
+    </div>
+    <div class="flex-grow flex items-center justify-center">
+        <div class="max-w-sm sm:max-w-md lg:max-w-lg w-full mx-4">
+        <div class="bg-white/90 backdrop-blur-sm border-2 border-white/20 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)] p-8 rounded-lg">
+            <h1 class="text-4xl sm:text-5xl font-bold text-center mb-8 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">Ghost NGL</h1>
+            <p class="text-center mb-8 text-white text-lg drop-shadow-lg" id="description">Anonymous Messaging from the Shadows</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 px-2">
+                <a href="{{ url_for('login') }}" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 sm:px-8 py-3 sm:py-4 font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 sm:hover:scale-110 transition-all duration-300 floating text-center text-sm sm:text-base flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    <span>Login</span>
+                </a>
+                <a href="{{ url_for('register') }}" class="bg-gradient-to-r from-pink-600 to-red-600 text-white px-6 sm:px-8 py-3 sm:py-4 font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 sm:hover:scale-110 transition-all duration-300 floating text-center text-sm sm:text-base flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                    </svg>
+                    <span>Sign Up</span>
+                </a>
+            </div>
+    </div>
+    </div>
+    <footer class="fixed bottom-0 left-0 right-0 text-center text-white text-sm py-4 font-bold bg-black/70 backdrop-blur-sm drop-shadow-lg">
+        <span class="text-lg font-extrabold tracking-wider">COPYRIGHT</span> © <span id="year"></span> Ghost NGL. Designed by inda aka ghostscript
+    </footer>
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+        // Typing effect for description
+        const description = "Anonymous Messaging from the Shadows";
+        let index = 0;
+        const descElement = document.getElementById('description');
+        descElement.textContent = '';
+        function typeWriter() {
+            if (index < description.length) {
+                descElement.textContent += description.charAt(index);
+                index++;
+                setTimeout(typeWriter, 50);
+            }
+        }
+        setTimeout(typeWriter, 1000); // Start after 1 second
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
+        }
+    </script>
+</body>
+</html>

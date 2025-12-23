@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="/static/icon.png">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#000000">
+    <meta property="og:title" content="Ghost NGL Dashboard">
+    <meta property="og:description" content="View your anonymous messages in Ghost NGL.">
+    <meta property="og:image" content="/static/icon.png">
+    <meta property="og:url" content="{{ url_for('dashboard', _external=True) }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Dashboard - Ghost NGL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overscroll-behavior-y: none;
+        }
+        /* Glass morphism effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass-card {
+            background: rgba(17, 24, 39, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Smooth transitions */
+        .transition-all-200 {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .transition-all-300 {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Message card hover */
+        .message-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .message-card:hover {
+            transform: translateY(-2px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(75, 85, 99, 0.5);
+        }
+        /* Pulse animation for new messages */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .dark .gradient-text {
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 min-h-screen transition-colors duration-300 overflow-x-hidden">
+    <!-- Beta Banner -->
+    <div class="bg-yellow-400 text-black text-center py-2 text-sm font-medium sticky top-0 z-50">
+        🚀 BETA VERSION - Ghost NGL is in development
+    </div>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 w-full glass-card shadow-lg border-b border-white/20 dark:border-gray-800/50 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <i class="fas fa-ghost text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-white">Ghost NGL</h1>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">@{{ handle }}</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all-200 shadow-sm" aria-label="Toggle theme">
+                    <i id="themeIcon" class="fas fa-sun"></i>
+                </button>
+                <a href="{{ url_for('logout') }}" class="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all-200 flex items-center space-x-2">
+                    <i class="fas fa-sign-out-alt text-xs"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        <!-- Flash Messages -->
+        {% set flashed_messages = get_flashed_messages(with_categories=true) %}
+        {% if flashed_messages %}
+            <div class="mb-6 space-y-3">
+                {% for category, message in flashed_messages %}
+                    <div class="rounded-xl p-4 shadow-lg {% if category == 'success' %}bg-gradient-to-r from-emerald-500 to-teal-600{% else %}bg-gradient-to-r from-rose-500 to-pink-600{% endif %} text-white flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %} text-lg"></i>
+                            <span class="font-medium">{{ message }}</span>
+                        </div>
+                        <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Anonymous Link Card -->
+        <div class="glass-card rounded-2xl shadow-2xl p-5 mb-6 border border-white/30 dark:border-gray-800/50">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                            <i class="fas fa-link text-white text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-white">Your Anonymous Link</h2>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">Share this link to receive anonymous messages from anyone</p>
+                    
+                    <div class="relative">
+                        <input type="text" id="link" value="{{ url_for('send_page', username=handle, _external=True) }}" readonly 
+                               class="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-xl py-3 px-4 pr-32 text-gray-700 dark:text-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="copyBtn" onclick="copyToClipboard()" 
+                                class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-all-200 flex items-center space-x-2">
+                            <i class="fas fa-copy text-xs"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-500 mt-3 flex items-center space-x-1">
+                        <i class="fas fa-keyboard"></i>
+                        <span>Press <kbd class="px-2 py-1 bg-gray-200 dark:bg-gray-800 rounded text-xs font-semibold">C</kbd> to copy link</span>
+                    </p>
+                </div>
+                
+                <div class="md:ml-6">
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 p-4 rounded-xl border border-indigo-100 dark:border-gray-800">
+                        <h3 class="text-sm font-bold text-gray-800 dark:text-white mb-2">Share Stats</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold gradient-text">{{ messages|length }}</div>
+                                <div class="text-xs text-gray-600 dark:text-gray-400">Total</div>
+                            </div>
+                            <div class="text-center">
+                                {% set unread_count = messages|selectattr('is_read', 'equalto', false)|list|length %}
+                                <div class="text-2xl font-bold text-rose-500">{{ unread_count }}</div>
+                                <div class="text-xs text-gray-600 dark:text-gray-400">Unread</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Messages Inbox -->
+            <div class="lg:col-span-2">
+                <div class="glass-card rounded-2xl shadow-2xl overflow-hidden border border-white/30 dark:border-gray-800/50">
+                    <div class="p-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg">
+                                <i class="fas fa-inbox text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-white">Inbox</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">{{ messages|length }} message(s)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            {% if unread_count > 0 %}
+                            <div class="px-3 py-1 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold rounded-full flex items-center space-x-1 pulse-glow">
+                                <i class="fas fa-circle text-[8px]"></i>
+                                <span>{{ unread_count }} NEW</span>
+                            </div>
+                            {% endif %}
+                            <button class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all-200">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 max-h-[500px] overflow-y-auto">
+                        {% if messages %}
+                            <div class="space-y-3">
+                                {% for message in messages %}
+                                {% set unread = not message.is_read %}
+                                <a href="/message/{{ message.id }}" 
+                                   class="block message-card glass-card rounded-xl p-4 border {% if unread %}border-l-4 border-l-rose-500 border border-gray-200 dark:border-gray-800{% else %}border-gray-200 dark:border-gray-800{% endif %} hover:shadow-lg">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3 mb-2">
+                                                {% if unread %}
+                                                <span class="px-2 py-1 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold rounded-full">NEW</span>
+                                                {% endif %}
+                                                <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ message.timestamp.strftime('%b %d, %I:%M %p') }}</span>
+                                            </div>
+                                            <p class="text-gray-800 dark:text-gray-200 text-sm font-medium line-clamp-2">{{ message.content[:150] }}{% if message.content|length > 150 %}...{% endif %}</p>
+                                        </div>
+                                        <div class="ml-4 flex-shrink-0">
+                                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+                                                <i class="fas fa-eye text-white text-sm"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <!-- Empty State -->
+                            <div class="py-12 text-center">
+                                <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+                                    <i class="fas fa-envelope-open-text text-3xl text-gray-400 dark:text-gray-600"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300 mb-2">No messages yet</h3>
+                                <p class="text-gray-500 dark:text-gray-500 text-sm max-w-xs mx-auto">Share your anonymous link to start receiving messages from friends and followers!</p>
+                                <button onclick="copyToClipboard()" class="mt-6 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all-200 inline-flex items-center space-x-2">
+                                    <i class="fas fa-share-alt"></i>
+                                    <span>Share Your Link</span>
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="glass-card rounded-2xl shadow-2xl p-5 border border-white/30 dark:border-gray-800/50">
+                    <div class="flex items-center space-x-3 mb-5">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-bolt text-white"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">Quick Actions</h3>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <a href="{{ url_for('landing') }}" class="flex items-center justify-between p-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all-200 group">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                                    <i class="fas fa-home text-gray-700 dark:text-gray-300"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-800 dark:text-gray-300">Back to Home</span>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-400"></i>
+                        </a>
+                        
+                        <button onclick="copyToClipboard()" class="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 border border-indigo-100 dark:border-gray-800 hover:shadow-md transition-all-200 group">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                                    <i class="fas fa-share text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-800 dark:text-gray-300">Share Link</span>
+                            </div>
+                            <i class="fas fa-external-link-alt text-indigo-500"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="glass-card rounded-2xl shadow-2xl p-5 border border-white/30 dark:border-gray-800/50 border border-rose-200 dark:border-rose-900/30">
+                    <div class="flex items-center space-x-3 mb-5">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-exclamation-triangle text-white"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">Danger Zone</h3>
+                    </div>
+                    
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Permanent actions that cannot be undone</p>
+                    
+                    <form method="post" action="{{ url_for('delete_account') }}" onsubmit="return confirmDeletion()">
+                        <button type="submit" class="w-full flex items-center justify-center space-x-3 p-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-semibold hover:shadow-lg transition-all-200">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Delete Account</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tips -->
+                <div class="glass-card rounded-2xl shadow-2xl p-5 border border-white/30 dark:border-gray-800/50">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Pro Tips</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-lightbulb text-white text-xs"></i>
+                            </div>
+                            <p class="text-sm text-gray-700 dark:text-gray-400">Share your link on social media bios for maximum visibility</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-lightbulb text-white text-xs"></i>
+                            </div>
+                            <p class="text-sm text-gray-700 dark:text-gray-400">Enable notifications to never miss a new message</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transition-all-300 transform translate-y-10 opacity-0">
+        <div class="bg-gradient-to-r from-gray-900 to-black text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 max-w-sm">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center">
+                <i class="fas fa-check text-white text-sm"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-sm">Link copied!</p>
+                <p class="text-xs text-gray-300">Ready to share anywhere</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-10 px-4 py-6 text-center border-t border-gray-200 dark:border-gray-800/50">
+        <p class="text-sm text-gray-600 dark:text-gray-500 font-medium">
+            COPYRIGHT © <span id="year"></span> Ghost NGL. Designed by <span class="gradient-text font-bold">inda</span> aka ghostscript
+        </p>
+    </footer>
+
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                themeIcon.className = 'fas fa-moon';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.getElementById('themeIcon').className = 'fas fa-sun';
+        } else {
+            document.getElementById('themeIcon').className = 'fas fa-moon';
+        }
+
+        // Copy to clipboard
+        function copyToClipboard() {
+            const link = document.getElementById('link');
+            link.select();
+            link.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(link.value).then(() => {
+                // Show toast
+                const toast = document.getElementById('toast');
+                toast.classList.remove('translate-y-10', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+                
+                // Change copy button temporarily
+                const copyBtn = document.getElementById('copyBtn');
+                const originalHTML = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check text-xs"></i><span>Copied!</span>';
+                copyBtn.classList.add('from-emerald-500', 'to-teal-600');
+                
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                    toast.classList.add('translate-y-10', 'opacity-0');
+                    
+                    copyBtn.innerHTML = originalHTML;
+                    copyBtn.classList.remove('from-emerald-500', 'to-teal-600');
+                }, 2000);
+            });
+        }
+
+        // Confirm account deletion
+        function confirmDeletion() {
+            return confirm("⚠️ Are you absolutely sure? This will permanently delete your account and all messages. This action cannot be undone.");
+        }
+
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Keyboard shortcut for copy
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'c' && !['input', 'textarea'].includes(document.activeElement.tagName.toLowerCase())) {
+                copyToClipboard();
+                e.preventDefault();
+            }
+        });
+
+        // Service worker registration for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
+            });
+        }
+
+        // Check for unread messages (simplified)
+        setTimeout(() => {
+            const unreadCount = {{ unread_count|default(0)|tojson }};
+            if (unreadCount > 0 && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(`You have ${unreadCount} new message${unreadCount > 1 ? 's' : ''}!`, {
+                    body: 'Check your Ghost NGL inbox',
+                    icon: '/static/icon.png'
+                });
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

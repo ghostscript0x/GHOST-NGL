@@ -1,0 +1,16 @@
+{
+  "name": "Ghost NGL Anonymous Messaging",
+  "short_name": "Ghost NGL",
+  "description": "Send and receive anonymous messages",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F3F4F6",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
