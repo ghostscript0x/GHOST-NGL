@@ -1,5 +1,6 @@
-flask
-flask-sqlalchemy
+Flask
+Flask-SQLAlchemy
 python-dotenv
 html2image
-gunicorn==21.2.0
+gunicorn
+psycopg2-binary
